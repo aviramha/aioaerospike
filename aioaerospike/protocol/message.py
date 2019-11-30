@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from struct import Struct
+from struct import Struct, unpack
 
 from typing import Optional, List, Union
 
@@ -118,6 +118,20 @@ class BinType(IntEnum):
     tlist = 20
     ldt = 21
     geojson = 23
+
+
+def data_bin_to_python(
+    data: bytes,
+    dtype: BinType
+) -> Union[str, bytes, int, float]:
+    if dtype == BinType.string:
+        # Consider changing this later to have optional encoding.
+        return data.decode('utf-8')
+    elif dtype == BinType.integer:
+        return unpack('!Q', data)[0]
+    elif dtype == BinType.double:
+        return unpack("!d", data)[0]
+    return data
 
 
 @dataclass
