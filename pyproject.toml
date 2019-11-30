@@ -1,0 +1,63 @@
+[tool.black]
+line-length = 80
+target-version = ["py37"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | \.vscode
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+combine_as_imports = true
+default_section = "LOCALFOLDER"
+force_grid_wrap = false
+include_trailing_comma = true
+known_first_party = "aioaerospike"
+known_standard_library = ""
+known_third_party = ""
+line_length = 80
+multi_line_output = 3
+not_skip = "__init__.py"
+sections = "FUTURE,STDLIB,THIRDPARTY,FIRSTPARTY,LOCALFOLDER"
+skip = ".eggs,.venv,venv"
+
+[tool.poetry]
+name = "aioaerospike"
+version = "0.1.0"
+description = "Async Pure Python implementation of Aerospike client"
+authors = ["Aviram Hassan <aviramyhassan@gmail.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+bcrypt = "^3.1"
+construct = "^2.9"
+
+
+[tool.poetry.dev-dependencies]
+black = { version = ">=18.9b0", allows-prereleases = true }
+codecov = ">=2.0.15"
+flake8 = ">=3.7.6"
+flake8-bugbear = ">=18.8.0"
+isort = { version = ">=4.3.5", extras = ["pyproject"] }
+mypy = ">=0.670"
+pytest = ">=4.3.0"
+pytest-asyncio = ">=0.10.0"
+pytest-cov = ">=2.6.1"
+pytest-mock = ">=1.10.1"
+yarl = ">=1.3.0"
+
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
