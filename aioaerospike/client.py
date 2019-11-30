@@ -34,14 +34,3 @@ class AerospikeClient:
 
     async def connect(self):
         self._reader, self._writer = await open_connection(self.host, self.port)
-        await self._login()
-
-    async def _login(self):
-        login_message = AdminMessage.login(self._user, self._password)
-        aerospike_message = AerospikeMessage(login_message)
-        self._writer.write(aerospike_message.pack())
-        await self._writer.drain()
-        header = await self._reader.readexactly(AerospikeHeader.FORMAT.sizeof())
-        parsed_header = AerospikeHeader.parse(header)
-        rest_of_data = await self._reader.readexactly(parsed_header.length)
-        message = AerospikeMessage.parse(header + rest_of_data)
