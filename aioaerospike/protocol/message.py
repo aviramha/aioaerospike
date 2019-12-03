@@ -250,10 +250,10 @@ class Message:
     def parse(cls: Type["Message"], data: bytes) -> "Message":
         parsed_tuple = cls.FORMAT.unpack(data[: cls.FORMAT.size])
         (
+            _size,
             info1,
             info2,
             info3,
-            _,
             result_code,
             generation,
             ttl,
@@ -280,7 +280,7 @@ class Message:
             info3=info3,
             result_code=result_code,
             generation=generation,
-            ttl=ttl,
+            record_ttl=ttl,
             transaction_ttl=transaction_ttl,
             fields=fields,
             operations=operations,

@@ -36,8 +36,18 @@ class AerospikeClient:
     async def connect(self):
         self._reader, self._writer = await open_connection(self.host, self.port)
 
+    async def _get_response(self) -> AerospikeMessage:
+        header_data = await self._reader.readexactly(AerospikeHeader.FORMAT.sizeof())
+        header = AerospikeHeader.parse(header_data)
+        message_data = await self._reader.readexactly(header.length)
+        message = AerospikeMessage.parse(header_data + message_data)
+        return message
+
     async def put_key(self, namespace: str, set_name: str, key: str, bin_name: str, value: str) -> None:
         message = put_key(namespace, set_name, key, bin_name, value)
         data = AerospikeMessage(message).pack()
         self._writer.write(data)
         await self._writer.drain()
+        response = await self._get_response()
+        if response.message.result_code != 0:
+            raise Exception(f"Unexpected result code {response.message.result_code}")
