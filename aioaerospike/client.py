@@ -1,8 +1,8 @@
 from asyncio import StreamReader, StreamWriter, open_connection
 from typing import Optional
 
-# from .protocol.general import AerospikeMessage, AerospikeHeader
-# from .protocol.admin import AdminMessage
+from .protocol.general import AerospikeMessage, AerospikeHeader
+from .protocol.message import put_key
 
 
 class AerospikeClient:
@@ -35,3 +35,9 @@ class AerospikeClient:
 
     async def connect(self):
         self._reader, self._writer = await open_connection(self.host, self.port)
+
+    async def put_key(self, namespace: str, set_name: str, key: str, bin_name: str, value: str) -> None:
+        message = put_key(namespace, set_name, key, bin_name, value)
+        data = AerospikeMessage(message).pack()
+        self._writer.write(data)
+        await self._writer.drain()

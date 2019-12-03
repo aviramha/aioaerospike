@@ -5,7 +5,7 @@ from typing import Any, Dict, Type, Union
 from construct import BytesInteger, Const, Container, Int8ub, Struct
 
 from .admin import AdminMessage
-
+from .message import Message
 
 class MessageType(IntEnum):
     info = 1
@@ -15,10 +15,12 @@ class MessageType(IntEnum):
 
 
 MESSAGE_TYPE_TO_CLASS: Dict[MessageType, Type[Any]] = {
-    MessageType.admin: AdminMessage
+    MessageType.admin: AdminMessage,
+    MessageType.message: Message
 }
 
-MESSAGE_CLASS_TO_TYPE = {AdminMessage: MessageType.admin}
+MESSAGE_CLASS_TO_TYPE = {AdminMessage: MessageType.admin,
+Message: MessageType.message}
 
 
 @dataclass
@@ -48,12 +50,12 @@ class AerospikeHeader:
 @dataclass
 class AerospikeMessage:
 
-    message: Union[AdminMessage]
+    message: Union[AdminMessage, Message]
 
     def pack(self) -> bytes:
         packed_message = self.message.pack()
         packed_header = AerospikeHeader(
-            MESSAGE_CLASS_TO_TYPE[type(self.message)], len(packed_message)
+            message_type=MESSAGE_CLASS_TO_TYPE[type(self.message)], length=len(packed_message)
         )
         return packed_header.pack() + packed_message
 
