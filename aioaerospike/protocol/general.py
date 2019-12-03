@@ -1,10 +1,10 @@
-from .admin import AdminMessage
-
-from construct import Struct, BytesInteger, Int8ub, Container, Const
-from typing import Union
 from dataclasses import dataclass
 from enum import IntEnum
-from bcrypt import hashpw
+from typing import Any, Dict, Type, Union
+
+from construct import BytesInteger, Const, Container, Int8ub, Struct
+
+from .admin import AdminMessage
 
 
 class MessageType(IntEnum):
@@ -14,22 +14,21 @@ class MessageType(IntEnum):
     compressed = 4
 
 
-MESSAGE_TYPE_TO_CLASS = {
+MESSAGE_TYPE_TO_CLASS: Dict[MessageType, Type[Any]] = {
     MessageType.admin: AdminMessage
 }
 
-MESSAGE_CLASS_TO_TYPE = {
-    AdminMessage: MessageType.admin
-}
+MESSAGE_CLASS_TO_TYPE = {AdminMessage: MessageType.admin}
 
 
 @dataclass
 class AerospikeHeader:
     # Using construct because it's easier for 48bit integer.
-    FORMAT = Struct('version' / Const(2, Int8ub),
-                    'message_type' / Int8ub,
-                    'length' / BytesInteger(6)
-                    )
+    FORMAT = Struct(
+        "version" / Const(2, Int8ub),
+        "message_type" / Int8ub,
+        "length" / BytesInteger(6),
+    )
     message_type: MessageType
     length: int
 
@@ -39,10 +38,11 @@ class AerospikeHeader:
         )
 
     @classmethod
-    def parse(cls: 'AerospikeHeader', data: bytes) -> 'AerospikeHeader':
+    def parse(cls: Type["AerospikeHeader"], data: bytes) -> "AerospikeHeader":
         parsed_data = cls.FORMAT.parse(data)
-        return cls(message_type=parsed_data.message_type,
-                   length=parsed_data.length)
+        return cls(
+            message_type=parsed_data.message_type, length=parsed_data.length
+        )
 
 
 @dataclass
@@ -53,13 +53,13 @@ class AerospikeMessage:
     def pack(self) -> bytes:
         packed_message = self.message.pack()
         packed_header = AerospikeHeader(
-            MESSAGE_CLASS_TO_TYPE[type(self.message)], len(packed_message))
+            MESSAGE_CLASS_TO_TYPE[type(self.message)], len(packed_message)
+        )
         return packed_header.pack() + packed_message
 
     @classmethod
-    def parse(cls: 'AerospikeMessage', data: bytes) -> 'AerospikeMessage':
-        header = AerospikeHeader.parse(data[:AerospikeHeader.FORMAT.sizeof()])
+    def parse(cls: Type["AerospikeMessage"], data: bytes) -> "AerospikeMessage":
+        header = AerospikeHeader.parse(data[: AerospikeHeader.FORMAT.sizeof()])
         message_class = MESSAGE_TYPE_TO_CLASS[header.message_type]
-        message = message_class.parse(data[AerospikeHeader.FORMAT.sizeof():])
+        message = message_class.parse(data[AerospikeHeader.FORMAT.sizeof() :])
         return cls(message=message)
-

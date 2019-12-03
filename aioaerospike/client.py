@@ -1,7 +1,8 @@
-from asyncio import open_connection, StreamReader, StreamWriter
+from asyncio import StreamReader, StreamWriter, open_connection
+from typing import Optional
 
-from .protocol.general import AerospikeMessage, AerospikeHeader
-from .protocol.admin import AdminMessage
+# from .protocol.general import AerospikeMessage, AerospikeHeader
+# from .protocol.admin import AdminMessage
 
 
 class AerospikeClient:
@@ -29,8 +30,8 @@ class AerospikeClient:
         self._user: str = user
         self._password: str = password
         self._use_ssl: bool = use_ssl
-        self._reader: StreamReader = None
-        self._writer: StreamWriter = None
+        self._reader: Optional[StreamReader] = None
+        self._writer: Optional[StreamWriter] = None
 
     async def connect(self):
         self._reader, self._writer = await open_connection(self.host, self.port)

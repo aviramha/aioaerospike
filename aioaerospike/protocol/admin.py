@@ -1,9 +1,7 @@
 from dataclasses import dataclass
-from struct import Struct
-
-from typing import Optional, List
-
 from enum import IntEnum
+from struct import Struct
+from typing import List, Type
 
 from bcrypt import hashpw
 
@@ -53,9 +51,9 @@ class Field:
         return self.FORMAT.pack(length, self.field_type) + self.data
 
     @classmethod
-    def parse(cls: 'Field', data: bytes) -> 'Field':
-        length, field_type = cls.FORMAT.unpack(data[:cls.FORMAT.size])
-        data = data[cls.FORMAT.size:length]
+    def parse(cls: "Field", data: bytes) -> "Field":
+        length, field_type = cls.FORMAT.unpack(data[: cls.FORMAT.size])
+        data = data[cls.FORMAT.size : length]
         return cls(field_type=field_type, data=data)
 
     def __len__(self):
@@ -70,33 +68,35 @@ class AdminMessage:
 
     def pack(self) -> bytes:
         fields_count = len(self.fields)
-        fields_data = b''
+        fields_data = b""
         for field in self.fields:
             fields_data += field.pack()
         return self.FORMAT.pack(self.command_type, fields_count) + fields_data
 
     @classmethod
-    def parse(cls: 'AdminMessage', data: bytes) -> 'AdminMessage':
-        command_type, fields_count = cls.FORMAT.unpack(data[:cls.FORMAT.size])
+    def parse(cls: Type["AdminMessage"], data: bytes) -> "AdminMessage":
+        command_type, fields_count = cls.FORMAT.unpack(data[: cls.FORMAT.size])
         fields = []
-        data_left = data[cls.FORMAT.size:]
-        for i in range(fields_count):
+        data_left = data[cls.FORMAT.size :]
+        for _i in range(fields_count):
             field = Field.unpack(data_left)
             fields.append(field)
-            data_left = data_left[Field.FORMAT.size + len(field):]
+            data_left = data_left[Field.FORMAT.size + len(field) :]
         return cls(fields=fields, command_type=command_type)
 
     @classmethod
-    def login(cls: 'AdminMessage', user: str, password: str) -> bytes:
+    def login(cls: Type["AdminMessage"], user: str, password: str) -> bytes:
         hashed_pass = hash_password(password)
-        user_field = Field(FieldTypes.user, user.encode('utf-8'))
+        user_field = Field(FieldTypes.user, user.encode("utf-8"))
         password_field = Field(FieldTypes.password, hashed_pass)
-        return cls(command_type=AdminCommandsType.login,
-                   fields=[user_field, password_field])
+        return cls(
+            command_type=AdminCommandsType.login,
+            fields=[user_field, password_field],
+        ).pack()
 
 
 def hash_password(password: str) -> bytes:
     """
     Hashes password according to Aerospike algorithm
     """
-    return hashpw(password.encode('utf-8'), BCRYPT_SALT)
+    return hashpw(password.encode("utf-8"), BCRYPT_SALT)

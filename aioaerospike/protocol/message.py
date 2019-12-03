@@ -1,9 +1,8 @@
 from dataclasses import dataclass
+from enum import IntEnum, IntFlag, auto
+from functools import reduce
 from struct import Struct, unpack
-
-from typing import Optional, List, Union
-
-from enum import IntFlag, IntEnum, auto
+from typing import List, Type, Union
 
 # Can read about the flag in as_command.h (C client)
 
@@ -77,13 +76,13 @@ class Field:
         return self.FORMAT.pack(length, self.field_type) + self.data
 
     @classmethod
-    def parse(cls: 'Field', data: bytes) -> 'Field':
-        length, field_type = cls.FORMAT.unpack(data[:cls.FORMAT.size])
-        data = data[cls.FORMAT.size:length]
+    def parse(cls: Type["Field"], data: bytes) -> "Field":
+        length, field_type = cls.FORMAT.unpack(data[: cls.FORMAT.size])
+        data = data[cls.FORMAT.size : length]
         return cls(field_type=field_type, data=data)
 
     def __len__(self):
-        return len(self.data)
+        return len(self.data) + self.FORMAT.size
 
 
 class OperationTypes(IntEnum):
@@ -121,54 +120,172 @@ class BinType(IntEnum):
 
 
 def data_bin_to_python(
-    data: bytes,
-    dtype: BinType
+    data: bytes, dtype: BinType
 ) -> Union[str, bytes, int, float]:
     if dtype == BinType.string:
         # Consider changing this later to have optional encoding.
-        return data.decode('utf-8')
+        return data.decode("utf-8")
     elif dtype == BinType.integer:
-        return unpack('!Q', data)[0]
+        return unpack("!Q", data)[0]
     elif dtype == BinType.double:
         return unpack("!d", data)[0]
     return data
 
 
 @dataclass
-class Operation:
-    # Size, Op, Bin data type, Bin version, Bin name length
-    FORMAT = Struct("!IBBBB")
-    operation_type: OperationTypes
+class BinData:
+    data: Union[str, bytes, int, float]
+    INTEGER_FORMAT = Struct("!Q")
+    DOUBLE_FORMAT = Struct("!d")
+
+    def pack(self) -> bytes:
+        if isinstance(self.data, str):
+            return self.data.encode("utf-8")
+        elif isinstance(self.data, bytes):
+            return self.data
+        elif isinstance(self.data, int):
+            return self.INTEGER_FORMAT.pack(self.data)
+        elif isinstance(self.data, float):
+            return self.DOUBLE_FORMAT.pack(self.data)
+        raise TypeError(
+            f"Expected [str, bytes, int, float], received {type(self.data)}"
+        )
+
+    @classmethod
+    def parse(
+        cls: Type["BinData"], data_type: BinType, data: bytes
+    ) -> "BinData":
+        if data_type == BinType.string:
+            return cls(data=data.decode("utf-8"))
+        elif data_type == BinType.blob:
+            return cls(data=data)
+        elif data_type == BinType.integer:
+            return cls(data=cls.INTEGER_FORMAT.unpack(data)[0])
+        elif data_type == BinType.double:
+            return cls(data=cls.DOUBLE_FORMAT.unpack(data)[0])
+        raise TypeError(f"Expected BinType value, received {data_type}")
+
+    def __len__(self) -> int:
+        if isinstance(self.data, str) or isinstance(self.data, bytes):
+            return len(self.data)
+        # Equals to integer format size.
+        return self.DOUBLE_FORMAT.size
+
+
+@dataclass
+class Bin:
+    FORMAT = Struct("BBB")
     bin_type: BinType
     bin_version: int
     bin_name: str
-    data: Union[str, bytes, int, float]
-
-    def pack(self) -> bytes:
-        length = len(self.data)
-        return self.FORMAT.pack(length, self.field_type) + self.data
+    data: BinData
 
     @classmethod
-    def parse(cls: 'Operation', data: bytes) -> 'Operation':
-        unpacked = cls.FORMAT.unpack(data[:cls.FORMAT.size])
-        size, op_type, bin_type, bin_version, bin_name_length = unpacked
-        bin_name = data[cls.FORMAT.size:bin_name_length]
-        data = data[cls.FORMAT.size+bin_name_length:]
-        return cls(field_type=field_type, data=data)
+    def parse(cls: Type["Bin"], data: bytes) -> "Bin":
+        unpacked = cls.FORMAT.unpack(data[: cls.FORMAT.size])
+        bin_type, bin_version, bin_name_length = unpacked
+        bin_name = data[cls.FORMAT.size : bin_name_length].decode("utf-8")
+        data = data[cls.FORMAT.size + bin_name_length :]
+        data = BinData.parse(bin_type, data)
+        return cls(
+            bin_type=bin_type,
+            bin_name=bin_name,
+            bin_version=bin_version,
+            data=data,
+        )
+
+
+@dataclass
+class Operation:
+    # Size, Op, Bin data type, Bin version, Bin name length
+    FORMAT = Struct("!IB")
+    operation_type: OperationTypes
+    data_bin: Bin
+
+    def pack(self) -> bytes:
+        length = len(self.data_bin)
+        return self.FORMAT.pack(length, self.operation_type) + self.bin.pack()
+
+    @classmethod
+    def parse(cls: Type["Operation"], data: bytes) -> "Operation":
+        unpacked = cls.FORMAT.unpack(data[: cls.FORMAT.size])
+        size, op_type = unpacked
+        data_bin = Bin.parse(data[cls.FORMAT.size : size])
+        return cls(op_type=op_type, data_bin=data_bin)
 
     def __len__(self):
-        return len(self.data)
+        return len(self.data_bin) + self.FORMAT.size
 
 
 @dataclass
 class MessageHeader:
-    FORMAT = '!BBBx'
+    FORMAT = Struct("!BBBxBIIIHH")
     info1: Info1Flags
     info2: Info2Flags
     info3: Info3Flags
-    result_code: int
-    generation: int
-    ttl: int
+    result_code: int = 0
+    generation: int = 0
+    ttl: int = 0
     transaction_ttl: int
     fields: List[Field]
     operations: List[Operation]
+
+    def pack(self) -> bytes:
+        base = self.FORMAT.pack(
+            self.info1,
+            self.info2,
+            self.info3,
+            self.result_code,
+            self.generation,
+            self.ttl,
+            self.transaction_ttl,
+            len(self.fields),
+            len(self.operations),
+        )
+        fields = reduce(
+            lambda x, y: x + y, (field.pack() for field in self.fields)
+        )
+        operations = reduce(
+            lambda x, y: x + y, (op.pack() for op in self.operations)
+        )
+        return base + fields + operations
+
+    @classmethod
+    def parse(cls: "MessageHeader", data: bytes) -> "MessageHeader":
+        parsed_tuple = cls.FORMAT.unpack(data[: cls.FORMAT.size])
+        (
+            info1,
+            info2,
+            info3,
+            _,
+            result_code,
+            generation,
+            ttl,
+            trasnaction_ttl,
+            fields_count,
+            operations_count,
+        ) = parsed_tuple
+        data_left = data[cls.FORMAT.size :]
+        fields = []
+        operations = []
+        for _i in range(0, fields_count):
+            f = Field.parse(data_left)
+            fields.append(f)
+            data_left = data[len(f) :]
+
+        for _i in range(0, operations_count):
+            op = Operation.parse(data_left)
+            operations.append(op)
+            data_left = data[len(op) :]
+
+        return cls(
+            info1=info1,
+            info2=info2,
+            info3=info3,
+            result_code=result_code,
+            generation=generation,
+            ttl=ttl,
+            trasnaction_ttl=trasnaction_ttl,
+            fields=fields,
+            operations=operations,
+        )
