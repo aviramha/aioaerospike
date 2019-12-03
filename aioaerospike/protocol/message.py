@@ -175,24 +175,26 @@ class BinData:
 @dataclass
 class Bin:
     FORMAT = Struct("BBB")
-    bin_type: BinType
-    bin_version: int
-    bin_name: str
+    btype: BinType
+    version: int
+    name: str
     data: BinData
+
+    def pack(self) -> bytes:
+        base = self.FORMAT.pack(self.btype, self.version, len(self.name))
+        return base + self.name.encode("utf-8") + self.data.pack()
 
     @classmethod
     def parse(cls: Type["Bin"], data: bytes) -> "Bin":
         unpacked = cls.FORMAT.unpack(data[: cls.FORMAT.size])
-        bin_type, bin_version, bin_name_length = unpacked
-        bin_name = data[cls.FORMAT.size : bin_name_length].decode("utf-8")
-        data = data[cls.FORMAT.size + bin_name_length :]
-        data = BinData.parse(bin_type, data)
-        return cls(
-            bin_type=bin_type,
-            bin_name=bin_name,
-            bin_version=bin_version,
-            data=data,
-        )
+        btype, version, name_length = unpacked
+        name = data[cls.FORMAT.size : name_length].decode("utf-8")
+        data = data[cls.FORMAT.size + name_length :]
+        bin_data = BinData.parse(btype, data)
+        return cls(btype=btype, name=name, version=version, data=bin_data,)
+
+    def __len__(self):
+        return self.FORMAT.size + len(self.bin_name) + len(self.data)
 
 
 @dataclass
@@ -204,14 +206,16 @@ class Operation:
 
     def pack(self) -> bytes:
         length = len(self.data_bin)
-        return self.FORMAT.pack(length, self.operation_type) + self.bin.pack()
+        return (
+            self.FORMAT.pack(length, self.operation_type) + self.data_bin.pack()
+        )
 
     @classmethod
     def parse(cls: Type["Operation"], data: bytes) -> "Operation":
         unpacked = cls.FORMAT.unpack(data[: cls.FORMAT.size])
-        size, op_type = unpacked
+        size, operation_type = unpacked
         data_bin = Bin.parse(data[cls.FORMAT.size : size])
-        return cls(op_type=op_type, data_bin=data_bin)
+        return cls(operation_type=operation_type, data_bin=data_bin)
 
     def __len__(self):
         return len(self.data_bin) + self.FORMAT.size
@@ -223,12 +227,12 @@ class MessageHeader:
     info1: Info1Flags
     info2: Info2Flags
     info3: Info3Flags
-    result_code: int = 0
-    generation: int = 0
-    ttl: int = 0
     transaction_ttl: int
     fields: List[Field]
     operations: List[Operation]
+    result_code: int = 0
+    generation: int = 0
+    ttl: int = 0
 
     def pack(self) -> bytes:
         base = self.FORMAT.pack(
@@ -251,7 +255,7 @@ class MessageHeader:
         return base + fields + operations
 
     @classmethod
-    def parse(cls: "MessageHeader", data: bytes) -> "MessageHeader":
+    def parse(cls: Type["MessageHeader"], data: bytes) -> "MessageHeader":
         parsed_tuple = cls.FORMAT.unpack(data[: cls.FORMAT.size])
         (
             info1,
@@ -261,7 +265,7 @@ class MessageHeader:
             result_code,
             generation,
             ttl,
-            trasnaction_ttl,
+            transaction_ttl,
             fields_count,
             operations_count,
         ) = parsed_tuple
@@ -285,7 +289,7 @@ class MessageHeader:
             result_code=result_code,
             generation=generation,
             ttl=ttl,
-            trasnaction_ttl=trasnaction_ttl,
+            transaction_ttl=transaction_ttl,
             fields=fields,
             operations=operations,
         )

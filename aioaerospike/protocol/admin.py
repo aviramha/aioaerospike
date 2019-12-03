@@ -51,7 +51,7 @@ class Field:
         return self.FORMAT.pack(length, self.field_type) + self.data
 
     @classmethod
-    def parse(cls: "Field", data: bytes) -> "Field":
+    def parse(cls: Type["Field"], data: bytes) -> "Field":
         length, field_type = cls.FORMAT.unpack(data[: cls.FORMAT.size])
         data = data[cls.FORMAT.size : length]
         return cls(field_type=field_type, data=data)
@@ -79,7 +79,7 @@ class AdminMessage:
         fields = []
         data_left = data[cls.FORMAT.size :]
         for _i in range(fields_count):
-            field = Field.unpack(data_left)
+            field = Field.parse(data_left)
             fields.append(field)
             data_left = data_left[Field.FORMAT.size + len(field) :]
         return cls(fields=fields, command_type=command_type)
