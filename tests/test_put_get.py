@@ -5,7 +5,7 @@ from aioaerospike.client import AerospikeClient
 
 @pytest.mark.asyncio
 async def test_sanity_put_get():
-    client = AerospikeClient("127.0.0.1", "admin", "admin", port=32778)
+    client = AerospikeClient("127.0.0.1", "admin", "admin", port=3000)
     await client.connect()
 
     await client.put_key(
