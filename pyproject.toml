@@ -38,6 +38,10 @@ version = "0.1.0"
 description = "Async Pure Python implementation of Aerospike client"
 authors = ["Aviram Hassan <aviramyhassan@gmail.com>"]
 license = "MIT"
+readme = "README.md"
+repository = "https://github.com/aviramha/aioaerospike"
+
+keywords = ["aerospike", "database", "asyncio", "nosql"]
 
 [tool.poetry.dependencies]
 python = "^3.7"
