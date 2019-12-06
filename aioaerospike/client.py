@@ -1,8 +1,25 @@
 from asyncio import StreamReader, StreamWriter, open_connection
-from typing import Optional
+from functools import wraps
+from typing import Any, Dict, List, Optional
 
-from .protocol.general import AerospikeMessage, AerospikeHeader
-from .protocol.message import put_key
+from .protocol.general import AerospikeHeader, AerospikeMessage
+from .protocol.message import get_key, put_key
+
+
+class AerospikeClientNotConnected(Exception):
+    pass
+
+
+def require_connection(func):
+    @wraps(func)
+    async def wrapper(
+        self: "AerospikeClient", *args: List[Any], **kwargs: Dict[Any, Any]
+    ) -> Any:
+        if not self._reader or not self._writer:
+            raise AerospikeClientNotConnected()
+        return await func(self, *args, **kwargs)
+
+    return wrapper
 
 
 class AerospikeClient:
@@ -36,18 +53,38 @@ class AerospikeClient:
     async def connect(self):
         self._reader, self._writer = await open_connection(self.host, self.port)
 
+    @require_connection
     async def _get_response(self) -> AerospikeMessage:
-        header_data = await self._reader.readexactly(AerospikeHeader.FORMAT.sizeof())
+        header_data = await self._reader.readexactly(
+            AerospikeHeader.FORMAT.sizeof()
+        )
         header = AerospikeHeader.parse(header_data)
         message_data = await self._reader.readexactly(header.length)
         message = AerospikeMessage.parse(header_data + message_data)
         return message
 
-    async def put_key(self, namespace: str, set_name: str, key: str, bin_name: str, value: str) -> None:
+    @require_connection
+    async def put_key(
+        self, namespace: str, set_name: str, key: str, bin_name: str, value: str
+    ) -> None:
         message = put_key(namespace, set_name, key, bin_name, value)
         data = AerospikeMessage(message).pack()
         self._writer.write(data)
         await self._writer.drain()
         response = await self._get_response()
         if response.message.result_code != 0:
-            raise Exception(f"Unexpected result code {response.message.result_code}")
+            raise Exception(
+                f"Unexpected result code {response.message.result_code}"
+            )
+
+    @require_connection
+    async def get_key(self, namespace: str, set_name: str, key: str) -> Any:
+        message = get_key(namespace, set_name, key)
+        data = AerospikeMessage(message).pack()
+        self._writer.write(data)
+        await self._writer.drain()
+        response = await self._get_response()
+        return {
+            op.data_bin.name: op.data_bin.data.data
+            for op in response.message.operations
+        }

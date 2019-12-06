@@ -1,9 +1,9 @@
+import hashlib
 from dataclasses import dataclass
 from enum import IntEnum, IntFlag, auto
 from functools import reduce
-from struct import Struct, unpack
+from struct import Struct
 from typing import List, Type, Union
-import hashlib
 
 # Can read about the flag in as_command.h (C client)
 
@@ -82,7 +82,7 @@ class Field:
     @classmethod
     def parse(cls: Type["Field"], data: bytes) -> "Field":
         length, field_type = cls.FORMAT.unpack(data[: cls.FORMAT.size])
-        data = data[cls.FORMAT.size: length]
+        data = data[cls.FORMAT.size : length]
         return cls(field_type=field_type, data=data)
 
     def __len__(self):
@@ -179,8 +179,10 @@ class Bin:
     def parse(cls: Type["Bin"], data: bytes) -> "Bin":
         unpacked = cls.FORMAT.unpack(data[: cls.FORMAT.size])
         btype, version, name_length = unpacked
-        name = data[cls.FORMAT.size: name_length].decode("utf-8")
-        data = data[cls.FORMAT.size + name_length:]
+        name = data[cls.FORMAT.size : cls.FORMAT.size + name_length].decode(
+            "utf-8"
+        )
+        data = data[cls.FORMAT.size + name_length :]
         bin_data = BinData.parse(btype, data)
         return cls(btype=btype, name=name, version=version, data=bin_data,)
 
@@ -205,7 +207,7 @@ class Operation:
     def parse(cls: Type["Operation"], data: bytes) -> "Operation":
         unpacked = cls.FORMAT.unpack(data[: cls.FORMAT.size])
         size, operation_type = unpacked
-        data_bin = Bin.parse(data[cls.FORMAT.size: size])
+        data_bin = Bin.parse(data[cls.FORMAT.size : cls.FORMAT.size + size])
         return cls(operation_type=operation_type, data_bin=data_bin)
 
     def __len__(self):
@@ -239,10 +241,10 @@ class Message:
             len(self.operations),
         )
         fields = reduce(
-            lambda x, y: x + y, (field.pack() for field in self.fields)
+            lambda x, y: x + y, (field.pack() for field in self.fields), b""
         )
         operations = reduce(
-            lambda x, y: x + y, (op.pack() for op in self.operations)
+            lambda x, y: x + y, (op.pack() for op in self.operations), b""
         )
         return base + fields + operations
 
@@ -261,18 +263,18 @@ class Message:
             fields_count,
             operations_count,
         ) = parsed_tuple
-        data_left = data[cls.FORMAT.size:]
+        data_left = data[cls.FORMAT.size :]
         fields = []
         operations = []
         for _i in range(0, fields_count):
             f = Field.parse(data_left)
             fields.append(f)
-            data_left = data[len(f):]
+            data_left = data[len(f) :]
 
         for _i in range(0, operations_count):
             op = Operation.parse(data_left)
             operations.append(op)
-            data_left = data[len(op):]
+            data_left = data[len(op) :]
 
         return cls(
             info1=info1,
@@ -288,15 +290,17 @@ class Message:
 
 
 def digest_key(set_name: bytes, key: str) -> bytes:
-    ripe = hashlib.new('ripemd160')
+    ripe = hashlib.new("ripemd160")
     ripe.update(set_name)
-    ripe.update(key.encode('utf-8'))
+    ripe.update(key.encode("utf-8"))
     return ripe.digest()
 
 
-def put_key(namespace: str, set_name: str, key: str, bin_name: str, value: str) -> Message:
-    set_encoded = set_name.encode('utf-8')
-    namespace_field = Field(FieldTypes.namespace, namespace.encode('utf-8'))
+def put_key(
+    namespace: str, set_name: str, key: str, bin_name: str, value: str
+) -> Message:
+    set_encoded = set_name.encode("utf-8")
+    namespace_field = Field(FieldTypes.namespace, namespace.encode("utf-8"))
     set_field = Field(FieldTypes.setname, set_encoded)
 
     ripe_digest = digest_key(set_encoded, key)
@@ -305,6 +309,29 @@ def put_key(namespace: str, set_name: str, key: str, bin_name: str, value: str) 
     dbin = BinData(value)
     bin_container = Bin(BinType.string, 0, bin_name, dbin)
     op = Operation(OperationTypes.write, bin_container)
-    return Message(info1=Info1Flags.empty, info2=Info2Flags.write, info3=Info3Flags.empty,
-                   transaction_ttl=1000, fields=[namespace_field, set_field, key_field],
-                   operations=[op])
+    return Message(
+        info1=Info1Flags.empty,
+        info2=Info2Flags.write,
+        info3=Info3Flags.empty,
+        transaction_ttl=1000,
+        fields=[namespace_field, set_field, key_field],
+        operations=[op],
+    )
+
+
+def get_key(namespace: str, set_name: str, key: str) -> Message:
+    set_encoded = set_name.encode("utf-8")
+    namespace_field = Field(FieldTypes.namespace, namespace.encode("utf-8"))
+    set_field = Field(FieldTypes.setname, set_encoded)
+
+    ripe_digest = digest_key(set_encoded, key)
+    key_field = Field(FieldTypes.digest, ripe_digest)
+
+    return Message(
+        info1=Info1Flags.read | Info1Flags.get_all,
+        info2=Info2Flags.empty,
+        info3=Info3Flags.empty,
+        transaction_ttl=1000,
+        fields=[namespace_field, set_field, key_field],
+        operations=[],
+    )
