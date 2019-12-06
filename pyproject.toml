@@ -31,6 +31,7 @@ not_skip = "__init__.py"
 sections = "FUTURE,STDLIB,THIRDPARTY,FIRSTPARTY,LOCALFOLDER"
 skip = ".eggs,.venv,venv"
 
+
 [tool.poetry]
 name = "aioaerospike"
 version = "0.1.0"
@@ -43,6 +44,7 @@ python = "^3.7"
 bcrypt = "^3.1"
 construct = "^2.9"
 flake8-quotes = "^2.1"
+pytest-asyncio = "^0.10.0"
 
 
 [tool.poetry.dev-dependencies]
