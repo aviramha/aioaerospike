@@ -34,7 +34,7 @@ skip = ".eggs,.venv,venv"
 
 [tool.poetry]
 name = "aioaerospike"
-version = "0.1.0"
+version = "0.1.1"
 description = "Async Pure Python implementation of Aerospike client"
 authors = ["Aviram Hassan <aviramyhassan@gmail.com>"]
 license = "MIT"
