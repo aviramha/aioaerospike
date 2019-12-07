@@ -1,6 +1,9 @@
 # Changelog for aioaerospike
 
-## 0.1.4 (XXXX-XX-XX)
+## 0.1.5 (XXXX-XX-XX)
+
+
+## 0.1.4 (2019-12-07)
 - Added delete key method
 - Added key_exists method
 - Changed signature of put_key to be a dict, for easy multiple bins insert.
