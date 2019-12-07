@@ -40,6 +40,7 @@ $ make lint-black
 
 ## 0.1.3 (XXXX-XX-XX) (Unreleased)
 - Changed all enums to uppercase
+- Added tests for all supported key types
 
 ## 0.1.2 (2019-12-08)
 - Fixed key digest, key type can be all supported types (int, float, str, bytes)
