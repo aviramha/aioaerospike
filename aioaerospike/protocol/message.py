@@ -15,64 +15,64 @@ from .datatypes import (
 
 
 class Info1Flags(IntFlag):
-    empty = 0
-    read = auto()
-    get_all = auto()
-    unused = auto()
-    batch_index = auto()
-    xdr = auto()
-    dont_get_bin_data = auto()
-    read_mode_ap_all = auto()
+    EMPTY = 0
+    READ = auto()
+    GET_ALL = auto()
+    UNUSED = auto()
+    BATCH_INDEX = auto()
+    XDR = auto()
+    DONT_GET_BIN_DATA = auto()
+    READ_MODE_AP_ALL = auto()
     # Last bit unused
 
 
 class Info2Flags(IntFlag):
-    empty = 0
-    write = auto()
-    delete = auto()
-    generation = auto()
-    # apply write if new generation >= old, good for restore
-    generation_gt = auto()
-    durable_delete = auto()
-    create_only = auto()
-    unused = auto()
-    respond_all_ops = auto()
+    EMPTY = 0
+    WRITE = auto()
+    DELETE = auto()
+    GENERATION = auto()
+    # apply write if new generation >= old, good for RESTORE
+    GENERATION_GT = auto()
+    DURABLE_DELETE = auto()
+    CREATE_ONLY = auto()
+    UNUSED = auto()
+    RESPOND_ALL_OPS = auto()
 
 
 class Info3Flags(IntFlag):
-    empty = 0
-    last = auto()
-    commit_master = auto()
-    unused = auto()
-    update_only = auto()
-    create_or_replace = auto()
-    replace_only = auto()
-    sc_read_type = auto()
-    sc_read_relax = auto()
+    EMPTY = 0
+    LAST = auto()
+    COMMIT_MASTER = auto()
+    UNUSED = auto()
+    UPDATE_ONLY = auto()
+    CREATE_OR_REPLACE = auto()
+    REPLACE_ONLY = auto()
+    SC_READ_TYPE = auto()
+    SC_READ_RELAX = auto()
 
 
 class FieldTypes(IntEnum):
-    namespace = 0
-    setname = 1
-    key = 2
-    digest = 4
-    task_id = 7
-    scan_options = 8
-    scan_timeout = 9
-    scan_rps = 10
-    index_range = 22
-    index_filter = 23
-    index_limit = 24
-    index_order = 25
-    index_type = 26
-    udf_package_name = 30
-    udf_function = 31
-    udf_arglist = 32
-    udf_op = 33
-    query_bins = 40
-    batch_index = 41
-    batch_index_with_set = 42
-    predexp = 43
+    NAMESPACE = 0
+    SETNAME = 1
+    KEY = 2
+    DIGEST = 4
+    TASK_ID = 7
+    SCAN_OPTIONS = 8
+    SCAN_TIMEOUT = 9
+    SCAN_RPS = 10
+    INDEX_RANGE = 22
+    INDEX_FILTER = 23
+    INDEX_LIMIT = 24
+    INDEX_ORDER = 25
+    INDEX_TYPE = 26
+    UDF_PACKAGE_NAME = 30
+    UDF_FUNCTION = 31
+    UDF_ARGLIST = 32
+    UDF_OP = 33
+    QUERY_BINS = 40
+    BATCH_INDEX = 41
+    BATCH_INDEX_WITH_SET = 42
+    PREDEXP = 43
 
 
 @dataclass
@@ -96,19 +96,19 @@ class Field:
 
 
 class OperationTypes(IntEnum):
-    read = 1
-    write = 2
-    cdt_read = 3
-    cdt_modify = 4
-    map_read = 6
-    map_modify = 7
-    incr = 5
-    append = 9
-    prepend = 10
-    touch = 11
-    bit_read = 12
-    bit_modify = 13
-    delete = 14
+    READ = 1
+    WRITE = 2
+    CDT_READ = 3
+    CDT_MODIFY = 4
+    MAP_READ = 6
+    MAP_MODIFY = 7
+    INCR = 5
+    APPEND = 9
+    PREPEND = 10
+    TOUCH = 11
+    BIT_READ = 12
+    BIT_MODIFY = 13
+    DELETE = 14
 
 
 @dataclass
@@ -249,18 +249,18 @@ def put_key(
     value: str,
 ) -> Message:
     set_encoded = set_name.encode("utf-8")
-    namespace_field = Field(FieldTypes.namespace, namespace.encode("utf-8"))
-    set_field = Field(FieldTypes.setname, set_encoded)
+    namespace_field = Field(FieldTypes.NAMESPACE, namespace.encode("utf-8"))
+    set_field = Field(FieldTypes.SETNAME, set_encoded)
 
     aero_key = data_to_aerospike_type(key)
-    key_field = Field(FieldTypes.digest, aero_key.digest(set_name))
+    key_field = Field(FieldTypes.DIGEST, aero_key.digest(set_name))
 
     bin_container = Bin.create(name=bin_name, data=value)
-    op = Operation(OperationTypes.write, bin_container)
+    op = Operation(OperationTypes.WRITE, bin_container)
     return Message(
-        info1=Info1Flags.empty,
-        info2=Info2Flags.write,
-        info3=Info3Flags.empty,
+        info1=Info1Flags.EMPTY,
+        info2=Info2Flags.WRITE,
+        info3=Info3Flags.EMPTY,
         transaction_ttl=1000,
         fields=[namespace_field, set_field, key_field],
         operations=[op],
@@ -269,16 +269,16 @@ def put_key(
 
 def get_key(namespace: str, set_name: str, key: AerospikeKeyType) -> Message:
     set_encoded = set_name.encode("utf-8")
-    namespace_field = Field(FieldTypes.namespace, namespace.encode("utf-8"))
-    set_field = Field(FieldTypes.setname, set_encoded)
+    namespace_field = Field(FieldTypes.NAMESPACE, namespace.encode("utf-8"))
+    set_field = Field(FieldTypes.SETNAME, set_encoded)
 
     aero_key = data_to_aerospike_type(key)
-    key_field = Field(FieldTypes.digest, aero_key.digest(set_name))
+    key_field = Field(FieldTypes.DIGEST, aero_key.digest(set_name))
 
     return Message(
-        info1=Info1Flags.read | Info1Flags.get_all,
-        info2=Info2Flags.empty,
-        info3=Info3Flags.empty,
+        info1=Info1Flags.READ | Info1Flags.GET_ALL,
+        info2=Info2Flags.EMPTY,
+        info3=Info3Flags.EMPTY,
         transaction_ttl=1000,
         fields=[namespace_field, set_field, key_field],
         operations=[],
