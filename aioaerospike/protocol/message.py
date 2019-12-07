@@ -3,9 +3,10 @@ from dataclasses import dataclass
 from enum import IntEnum, IntFlag, auto
 from functools import reduce
 from struct import Struct
-from typing import List, Type, Union
+from typing import Any, List, Type
 
 # Can read about the flag in as_command.h (C client)
+from .datatypes import AerospikeDataType, data_to_aerospike_type, parse_raw
 
 
 class Info1Flags(IntFlag):
@@ -105,74 +106,15 @@ class OperationTypes(IntEnum):
     delete = 14
 
 
-class BinType(IntEnum):
-    undef = 0
-    integer = 1
-    double = 2
-    string = 3
-    blob = 4
-    java = 7
-    csharp = 8
-    python = 9
-    ruby = 10
-    php = 11
-    erlang = 12
-    tmap = 19
-    tlist = 20
-    ldt = 21
-    geojson = 23
-
-
-@dataclass
-class BinData:
-    data: Union[str, bytes, int, float]
-    INTEGER_FORMAT = Struct("!Q")
-    DOUBLE_FORMAT = Struct("!d")
-
-    def pack(self) -> bytes:
-        if isinstance(self.data, str):
-            return self.data.encode("utf-8")
-        elif isinstance(self.data, bytes):
-            return self.data
-        elif isinstance(self.data, int):
-            return self.INTEGER_FORMAT.pack(self.data)
-        elif isinstance(self.data, float):
-            return self.DOUBLE_FORMAT.pack(self.data)
-        raise TypeError(
-            f"Expected [str, bytes, int, float], received {type(self.data)}"
-        )
-
-    @classmethod
-    def parse(
-        cls: Type["BinData"], data_type: BinType, data: bytes
-    ) -> "BinData":
-        if data_type == BinType.string:
-            return cls(data=data.decode("utf-8"))
-        elif data_type == BinType.blob:
-            return cls(data=data)
-        elif data_type == BinType.integer:
-            return cls(data=cls.INTEGER_FORMAT.unpack(data)[0])
-        elif data_type == BinType.double:
-            return cls(data=cls.DOUBLE_FORMAT.unpack(data)[0])
-        raise TypeError(f"Expected BinType value, received {data_type}")
-
-    def __len__(self) -> int:
-        if isinstance(self.data, str) or isinstance(self.data, bytes):
-            return len(self.data)
-        # Equals to integer format size.
-        return self.DOUBLE_FORMAT.size
-
-
 @dataclass
 class Bin:
     FORMAT = Struct("BBB")
-    btype: BinType
     version: int
     name: str
-    data: BinData
+    data: AerospikeDataType
 
     def pack(self) -> bytes:
-        base = self.FORMAT.pack(self.btype, self.version, len(self.name))
+        base = self.FORMAT.pack(self.data.TYPE, self.version, len(self.name))
         return base + self.name.encode("utf-8") + self.data.pack()
 
     @classmethod
@@ -183,11 +125,16 @@ class Bin:
             "utf-8"
         )
         data = data[cls.FORMAT.size + name_length :]
-        bin_data = BinData.parse(btype, data)
-        return cls(btype=btype, name=name, version=version, data=bin_data,)
+        bin_data = parse_raw(btype, data)
+        return cls(name=name, version=version, data=bin_data)
 
     def __len__(self):
         return self.FORMAT.size + len(self.name) + len(self.data)
+
+    @classmethod
+    def create(cls, name: str, data: Any, version=0) -> "Bin":
+        adata = data_to_aerospike_type(data)
+        return cls(name=name, version=version, data=adata)
 
 
 @dataclass
@@ -306,8 +253,7 @@ def put_key(
     ripe_digest = digest_key(set_encoded, key)
     key_field = Field(FieldTypes.digest, ripe_digest)
 
-    dbin = BinData(value)
-    bin_container = Bin(BinType.string, 0, bin_name, dbin)
+    bin_container = Bin.create(name=bin_name, data=value)
     op = Operation(OperationTypes.write, bin_container)
     return Message(
         info1=Info1Flags.empty,

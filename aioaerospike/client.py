@@ -85,6 +85,6 @@ class AerospikeClient:
         await self._writer.drain()
         response = await self._get_response()
         return {
-            op.data_bin.name: op.data_bin.data.data
+            op.data_bin.name: op.data_bin.data.value
             for op in response.message.operations
         }
