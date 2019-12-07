@@ -8,28 +8,28 @@ AerospikeKeyType = Union[str, bytes, float, int]
 
 
 class AerospikeTypes(IntEnum):
-    undef = 0
-    integer = 1
-    double = 2
-    string = 3
-    blob = 4
-    java = 7
-    csharp = 8
-    python = 9
-    ruby = 10
-    php = 11
-    erlang = 12
-    tmap = 19
-    tlist = 20
-    ldt = 21
-    geojson = 23
+    UNDEF = 0
+    INTEGER = 1
+    DOUBLE = 2
+    STRING = 3
+    BLOB = 4
+    JAVA = 7
+    CSHARP = 8
+    PYTHON = 9
+    RUBY = 10
+    PHP = 11
+    ERLANG = 12
+    TMAP = 19
+    TLIST = 20
+    LDT = 21
+    GEOJSON = 23
 
 
 PYTHON_TYPE_TO_AEROSPIKE = {
-    str: AerospikeTypes.string,
-    bytes: AerospikeTypes.blob,
-    float: AerospikeTypes.double,
-    int: AerospikeTypes.integer,
+    str: AerospikeTypes.STRING,
+    bytes: AerospikeTypes.BLOB,
+    float: AerospikeTypes.DOUBLE,
+    int: AerospikeTypes.INTEGER,
 }
 
 
@@ -83,7 +83,7 @@ class AerospikeDataType(metaclass=AerospikeMetaDataType):
 
 
 class AerospikeInteger(AerospikeDataType):
-    TYPE = AerospikeTypes.integer
+    TYPE = AerospikeTypes.INTEGER
     FORMAT = Struct("!Q")
     DIGESTABLE = True
 
@@ -102,7 +102,7 @@ class AerospikeInteger(AerospikeDataType):
 
 
 class AerospikeDouble(AerospikeDataType):
-    TYPE = AerospikeTypes.double
+    TYPE = AerospikeTypes.DOUBLE
     FORMAT = Struct("!d")
     DIGESTABLE = True
 
@@ -121,7 +121,7 @@ class AerospikeDouble(AerospikeDataType):
 
 
 class AerospikeString(AerospikeDataType):
-    TYPE = AerospikeTypes.string
+    TYPE = AerospikeTypes.STRING
     DIGESTABLE = True
 
     def __init__(self, value: str):
@@ -139,7 +139,7 @@ class AerospikeString(AerospikeDataType):
 
 
 class AerospikeBytes(AerospikeDataType):
-    TYPE = AerospikeTypes.blob
+    TYPE = AerospikeTypes.BLOB
     DIGESTABLE = True
 
     def __init__(self, value: bytes):

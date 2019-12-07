@@ -9,20 +9,20 @@ from .message import Message
 
 
 class MessageType(IntEnum):
-    info = 1
-    admin = 2
-    message = 3
-    compressed = 4
+    INFO = 1
+    ADMIN = 2
+    MESSAGE = 3
+    COMPRESSED = 4
 
 
 MESSAGE_TYPE_TO_CLASS: Dict[MessageType, Type[Any]] = {
-    MessageType.admin: AdminMessage,
-    MessageType.message: Message,
+    MessageType.ADMIN: AdminMessage,
+    MessageType.MESSAGE: Message,
 }
 
 MESSAGE_CLASS_TO_TYPE = {
-    AdminMessage: MessageType.admin,
-    Message: MessageType.message,
+    AdminMessage: MessageType.ADMIN,
+    Message: MessageType.MESSAGE,
 }
 
 
