@@ -150,16 +150,15 @@ class Operation:
     data_bin: Bin
 
     def pack(self) -> bytes:
-        length = len(self.data_bin) + 1
-        return (
-            self.FORMAT.pack(length, self.operation_type) + self.data_bin.pack()
-        )
+        packed_bin = self.data_bin.pack()
+        length = len(packed_bin) + 1
+        return self.FORMAT.pack(length, self.operation_type) + packed_bin
 
     @classmethod
     def parse(cls: Type["Operation"], data: bytes) -> "Operation":
         unpacked = cls.FORMAT.unpack(data[: cls.FORMAT.size])
         size, operation_type = unpacked
-        data_bin = Bin.parse(data[cls.FORMAT.size : cls.FORMAT.size + size])
+        data_bin = Bin.parse(data[cls.FORMAT.size : cls.FORMAT.size + size - 1])
         return cls(operation_type=operation_type, data_bin=data_bin)
 
     def __len__(self):
@@ -226,7 +225,7 @@ class Message:
         for _i in range(0, operations_count):
             op = Operation.parse(data_left)
             operations.append(op)
-            data_left = data[len(op) :]
+            data_left = data_left[len(op) :]
 
         return cls(
             info1=info1,

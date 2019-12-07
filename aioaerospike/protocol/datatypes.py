@@ -1,10 +1,14 @@
 import hashlib
+import struct
 from abc import ABCMeta, abstractmethod
 from enum import IntEnum
-from struct import Struct, pack
-from typing import Any, ClassVar, Dict, Optional, Type, Union
+from struct import Struct
+from typing import Any, ClassVar, Dict, List, Optional, Type, Union
+
+import msgpack
 
 AerospikeKeyType = Union[str, bytes, float, int]
+AerospikeValueType = Union[str, bytes, float, int, list, dict]
 
 
 class AerospikeTypes(IntEnum):
@@ -30,6 +34,8 @@ PYTHON_TYPE_TO_AEROSPIKE = {
     bytes: AerospikeTypes.BLOB,
     float: AerospikeTypes.DOUBLE,
     int: AerospikeTypes.INTEGER,
+    list: AerospikeTypes.TLIST,
+    dict: AerospikeTypes.TMAP,
 }
 
 
@@ -48,6 +54,7 @@ class AerospikeDataType(metaclass=AerospikeMetaDataType):
 
     DIGESTABLE = False
     TYPE: Optional[AerospikeTypes] = None
+    value: Any
 
     @abstractmethod
     def __init__(self, value: Any) -> None:
@@ -78,7 +85,7 @@ class AerospikeDataType(metaclass=AerospikeMetaDataType):
             )
         ripe = hashlib.new("ripemd160")
         ripe.update(set_name.encode("utf-8"))
-        ripe.update(pack("!B", self.TYPE.value) + self.pack())
+        ripe.update(struct.pack("!B", self.TYPE.value) + self.pack())
         return ripe.digest()
 
 
@@ -156,6 +163,68 @@ class AerospikeBytes(AerospikeDataType):
         return len(self.value)
 
 
+class AerospikeList(AerospikeDataType):
+    TYPE = AerospikeTypes.TLIST
+    DIGESTABLE = False
+
+    def __init__(self, value: List[Any], size=0) -> None:
+        self.value = value
+        self._size = size
+
+    def pack(self) -> bytes:
+        aerospike_list = []
+        for val in self.value:
+            aerospike_list.append(pack_native(val))
+        data = msgpack.packb(aerospike_list)
+        self._size = len(data)
+        return data
+
+    @classmethod
+    def parse(cls, data: bytes) -> "AerospikeList":
+        raw_values = msgpack.unpackb(data)
+        parsed_values = []
+        for value in raw_values:
+            parsed_values.append(unpack_aerospike(value))
+        return cls(parsed_values, len(data))
+
+    def __len__(self) -> int:
+        if self._size:
+            return self._size
+        return len(self.pack())
+
+
+class AerospikeMap(AerospikeDataType):
+    TYPE = AerospikeTypes.TMAP
+    DIGESTABLE = False
+
+    def __init__(self, value: Dict[Any, Any], size=0) -> None:
+        self.value = value
+        self._size = size
+
+    def pack(self) -> bytes:
+        aerospike_dict = {}
+        for k, v in self.value.items():
+            packed_k = pack_native(k)
+            packed_v = pack_native(v)
+            aerospike_dict[packed_k] = packed_v
+        data = msgpack.packb(aerospike_dict)
+        self._size = len(data)
+        return data
+
+    @classmethod
+    def parse(cls, data: bytes) -> "AerospikeMap":
+        raw_dict = msgpack.unpackb(data)
+        parsed_dict = {}
+        for k, v in raw_dict.items():
+            parsed_dict[unpack_aerospike(k)] = unpack_aerospike(v)
+        return cls(parsed_dict, len(data))
+
+    def __len__(self) -> int:
+        if self._size:
+            return self._size
+        return len(self.pack())
+
+
 def parse_raw(atype: AerospikeTypes, data: bytes) -> AerospikeDataType:
     return AerospikeMetaDataType.types[atype].parse(data)
 
@@ -163,3 +232,21 @@ def parse_raw(atype: AerospikeTypes, data: bytes) -> AerospikeDataType:
 def data_to_aerospike_type(data: Any) -> AerospikeDataType:
     aerotype = PYTHON_TYPE_TO_AEROSPIKE[type(data)]
     return AerospikeMetaDataType.types[aerotype](data)
+
+
+def pack_native(data: Any) -> bytes:
+    """
+    Packs a native python object for list, arrays and dicts
+    """
+    type_instance = data_to_aerospike_type(data)
+    return struct.pack("!B", type_instance.TYPE) + type_instance.pack()
+
+
+def unpack_aerospike(data: bytes) -> AerospikeValueType:
+    """
+    Unpacks data that was part of a list,dict,array in Aerospike format
+    returns native type
+    """
+    atype = AerospikeTypes(data[0])
+    parsed = parse_raw(atype, data[1:])
+    return parsed.value
