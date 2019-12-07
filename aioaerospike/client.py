@@ -3,7 +3,7 @@ from functools import wraps
 from typing import Any, Dict, List, Optional
 
 from .protocol.general import AerospikeHeader, AerospikeMessage
-from .protocol.message import get_key, put_key
+from .protocol.message import delete_key, get_key, put_key
 
 
 class AerospikeClientNotConnected(Exception):
@@ -88,3 +88,15 @@ class AerospikeClient:
             op.data_bin.name: op.data_bin.data.value
             for op in response.message.operations
         }
+
+    @require_connection
+    async def delete_key(self, namespace: str, set_name: str, key: str) -> None:
+        message = delete_key(namespace, set_name, key)
+        data = AerospikeMessage(message).pack()
+        self._writer.write(data)
+        await self._writer.drain()
+        response = await self._get_response()
+        if response.message.result_code != 0:
+            raise Exception(
+                f"Unexpected result code {response.message.result_code}"
+            )

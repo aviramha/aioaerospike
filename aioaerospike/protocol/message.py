@@ -282,3 +282,21 @@ def get_key(namespace: str, set_name: str, key: AerospikeKeyType) -> Message:
         fields=[namespace_field, set_field, key_field],
         operations=[],
     )
+
+
+def delete_key(namespace: str, set_name: str, key: AerospikeKeyType) -> Message:
+    set_encoded = set_name.encode("utf-8")
+    namespace_field = Field(FieldTypes.NAMESPACE, namespace.encode("utf-8"))
+    set_field = Field(FieldTypes.SETNAME, set_encoded)
+
+    aero_key = data_to_aerospike_type(key)
+    key_field = Field(FieldTypes.DIGEST, aero_key.digest(set_name))
+
+    return Message(
+        info1=Info1Flags.EMPTY,
+        info2=Info2Flags.DELETE | Info2Flags.WRITE,
+        info3=Info3Flags.EMPTY,
+        transaction_ttl=1000,
+        fields=[namespace_field, set_field, key_field],
+        operations=[],
+    )

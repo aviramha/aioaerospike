@@ -38,6 +38,9 @@ $ make lint-black
 
 # Latest changes
 
+## 0.1.4 (XXXX-XX-XX)
+- Added delete key method
+
 ## 0.1.3 (2019-12-07)
 - Changed all enums to uppercase
 - Added tests for all supported key types
