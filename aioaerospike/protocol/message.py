@@ -1,12 +1,17 @@
-import hashlib
 from dataclasses import dataclass
 from enum import IntEnum, IntFlag, auto
 from functools import reduce
 from struct import Struct
 from typing import Any, List, Type
 
+from .datatypes import (
+    AerospikeDataType,
+    AerospikeKeyType,
+    data_to_aerospike_type,
+    parse_raw,
+)
+
 # Can read about the flag in as_command.h (C client)
-from .datatypes import AerospikeDataType, data_to_aerospike_type, parse_raw
 
 
 class Info1Flags(IntFlag):
@@ -236,22 +241,19 @@ class Message:
         )
 
 
-def digest_key(set_name: bytes, key: str) -> bytes:
-    ripe = hashlib.new("ripemd160")
-    ripe.update(set_name)
-    ripe.update(key.encode("utf-8"))
-    return ripe.digest()
-
-
 def put_key(
-    namespace: str, set_name: str, key: str, bin_name: str, value: str
+    namespace: str,
+    set_name: str,
+    key: AerospikeKeyType,
+    bin_name: str,
+    value: str,
 ) -> Message:
     set_encoded = set_name.encode("utf-8")
     namespace_field = Field(FieldTypes.namespace, namespace.encode("utf-8"))
     set_field = Field(FieldTypes.setname, set_encoded)
 
-    ripe_digest = digest_key(set_encoded, key)
-    key_field = Field(FieldTypes.digest, ripe_digest)
+    aero_key = data_to_aerospike_type(key)
+    key_field = Field(FieldTypes.digest, aero_key.digest(set_name))
 
     bin_container = Bin.create(name=bin_name, data=value)
     op = Operation(OperationTypes.write, bin_container)
@@ -265,13 +267,13 @@ def put_key(
     )
 
 
-def get_key(namespace: str, set_name: str, key: str) -> Message:
+def get_key(namespace: str, set_name: str, key: AerospikeKeyType) -> Message:
     set_encoded = set_name.encode("utf-8")
     namespace_field = Field(FieldTypes.namespace, namespace.encode("utf-8"))
     set_field = Field(FieldTypes.setname, set_encoded)
 
-    ripe_digest = digest_key(set_encoded, key)
-    key_field = Field(FieldTypes.digest, ripe_digest)
+    aero_key = data_to_aerospike_type(key)
+    key_field = Field(FieldTypes.digest, aero_key.digest(set_name))
 
     return Message(
         info1=Info1Flags.read | Info1Flags.get_all,

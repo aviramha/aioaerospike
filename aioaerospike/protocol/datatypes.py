@@ -1,7 +1,10 @@
+import hashlib
 from abc import ABCMeta, abstractmethod
 from enum import IntEnum
 from struct import Struct, pack
-from typing import Any, ClassVar, Dict, Optional, Type
+from typing import Any, ClassVar, Dict, Optional, Type, Union
+
+AerospikeKeyType = Union[str, bytes, float, int]
 
 
 class AerospikeTypes(IntEnum):
@@ -65,7 +68,7 @@ class AerospikeDataType(metaclass=AerospikeMetaDataType):
         """
         pass
 
-    def digest(self) -> bytes:
+    def digest(self, set_name: str) -> bytes:
         """
         Create RIPEMD160 digest from the datatype on supported once
         """
@@ -73,7 +76,10 @@ class AerospikeDataType(metaclass=AerospikeMetaDataType):
             raise NotImplementedError(
                 f"digest not available for class {type(self)}"
             )
-        return pack("!B", self.TYPE.value) + self.pack()
+        ripe = hashlib.new("ripemd160")
+        ripe.update(set_name.encode("utf-8"))
+        ripe.update(pack("!B", self.TYPE.value) + self.pack())
+        return ripe.digest()
 
 
 class AerospikeInteger(AerospikeDataType):
