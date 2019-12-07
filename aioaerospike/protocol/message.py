@@ -2,11 +2,12 @@ from dataclasses import dataclass
 from enum import IntEnum, IntFlag, auto
 from functools import reduce
 from struct import Struct
-from typing import Any, List, Type
+from typing import Any, Dict, List, Type
 
 from .datatypes import (
     AerospikeDataType,
     AerospikeKeyType,
+    AerospikeValueType,
     data_to_aerospike_type,
     parse_raw,
 )
@@ -240,13 +241,9 @@ class Message:
         )
 
 
-def put_key(
-    namespace: str,
-    set_name: str,
-    key: AerospikeKeyType,
-    bin_name: str,
-    value: str,
-) -> Message:
+def generate_namespace_set_key_fields(
+    namespace: str, set_name: str, key: AerospikeKeyType
+) -> List[Field]:
     set_encoded = set_name.encode("utf-8")
     namespace_field = Field(FieldTypes.NAMESPACE, namespace.encode("utf-8"))
     set_field = Field(FieldTypes.SETNAME, set_encoded)
@@ -254,67 +251,66 @@ def put_key(
     aero_key = data_to_aerospike_type(key)
     key_field = Field(FieldTypes.DIGEST, aero_key.digest(set_name))
 
-    bin_container = Bin.create(name=bin_name, data=value)
-    op = Operation(OperationTypes.WRITE, bin_container)
+    return [namespace_field, set_field, key_field]
+
+
+def put_key(
+    namespace: str,
+    set_name: str,
+    key: AerospikeKeyType,
+    bin_: Dict[str, AerospikeValueType],
+) -> Message:
+    fields = generate_namespace_set_key_fields(namespace, set_name, key)
+
+    ops = []
+    for k, v in bin_.items():
+        op = Operation(OperationTypes.WRITE, Bin.create(name=k, data=v))
+        ops.append(op)
+
     return Message(
         info1=Info1Flags.EMPTY,
         info2=Info2Flags.WRITE,
         info3=Info3Flags.EMPTY,
         transaction_ttl=1000,
-        fields=[namespace_field, set_field, key_field],
-        operations=[op],
+        fields=fields,
+        operations=ops,
     )
 
 
 def get_key(namespace: str, set_name: str, key: AerospikeKeyType) -> Message:
-    set_encoded = set_name.encode("utf-8")
-    namespace_field = Field(FieldTypes.NAMESPACE, namespace.encode("utf-8"))
-    set_field = Field(FieldTypes.SETNAME, set_encoded)
-
-    aero_key = data_to_aerospike_type(key)
-    key_field = Field(FieldTypes.DIGEST, aero_key.digest(set_name))
+    fields = generate_namespace_set_key_fields(namespace, set_name, key)
 
     return Message(
         info1=Info1Flags.READ | Info1Flags.GET_ALL,
         info2=Info2Flags.EMPTY,
         info3=Info3Flags.EMPTY,
         transaction_ttl=1000,
-        fields=[namespace_field, set_field, key_field],
+        fields=fields,
         operations=[],
     )
 
 
 def delete_key(namespace: str, set_name: str, key: AerospikeKeyType) -> Message:
-    set_encoded = set_name.encode("utf-8")
-    namespace_field = Field(FieldTypes.NAMESPACE, namespace.encode("utf-8"))
-    set_field = Field(FieldTypes.SETNAME, set_encoded)
-
-    aero_key = data_to_aerospike_type(key)
-    key_field = Field(FieldTypes.DIGEST, aero_key.digest(set_name))
+    fields = generate_namespace_set_key_fields(namespace, set_name, key)
 
     return Message(
         info1=Info1Flags.EMPTY,
         info2=Info2Flags.DELETE | Info2Flags.WRITE,
         info3=Info3Flags.EMPTY,
         transaction_ttl=1000,
-        fields=[namespace_field, set_field, key_field],
+        fields=fields,
         operations=[],
     )
 
 
 def key_exists(namespace: str, set_name: str, key: AerospikeKeyType) -> Message:
-    set_encoded = set_name.encode("utf-8")
-    namespace_field = Field(FieldTypes.NAMESPACE, namespace.encode("utf-8"))
-    set_field = Field(FieldTypes.SETNAME, set_encoded)
-
-    aero_key = data_to_aerospike_type(key)
-    key_field = Field(FieldTypes.DIGEST, aero_key.digest(set_name))
+    fields = generate_namespace_set_key_fields(namespace, set_name, key)
 
     return Message(
         info1=Info1Flags.READ | Info1Flags.DONT_GET_BIN_DATA,
         info2=Info2Flags.EMPTY,
         info3=Info3Flags.EMPTY,
         transaction_ttl=1000,
-        fields=[namespace_field, set_field, key_field],
+        fields=fields,
         operations=[],
     )

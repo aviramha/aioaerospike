@@ -2,19 +2,15 @@ import pytest
 
 
 @pytest.mark.asyncio
-async def test_delete_key(client):
+async def test_delete_key(namespace, set_name, key, client):
     await client.put_key(
-        "test",
-        "test_delete_set",
-        "test_delete_key",
-        "bin_to_delete",
-        "test_bin_value_to_delete",
+        namespace, set_name, key, {"bin_to_delete": "test_bin_value_to_delete"}
     )
 
-    result = await client.get_key("test", "test_delete_set", "test_delete_key")
+    result = await client.get_key(namespace, set_name, key)
     assert result["bin_to_delete"] == "test_bin_value_to_delete"
 
-    await client.delete_key("test", "test_delete_set", "test_delete_key")
+    await client.delete_key(namespace, set_name, key)
 
-    result = await client.get_key("test", "test_delete_set", "test_delete_key")
+    result = await client.get_key(namespace, set_name, key)
     assert len(result) == 0

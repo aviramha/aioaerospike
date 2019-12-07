@@ -3,6 +3,7 @@
 ## 0.1.4 (XXXX-XX-XX)
 - Added delete key method
 - Added key_exists method
+- Changed signature of put_key to be a dict, for easy multiple bins insert.
 
 ## 0.1.3 (2019-12-07) (Unreleased)
 - Changed all enums to uppercase

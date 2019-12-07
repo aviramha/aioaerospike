@@ -2,6 +2,7 @@ from asyncio import StreamReader, StreamWriter, open_connection
 from functools import wraps
 from typing import Any, Dict, List, Optional
 
+from .protocol.datatypes import AerospikeValueType
 from .protocol.general import AerospikeHeader, AerospikeMessage
 from .protocol.message import delete_key, get_key, key_exists, put_key
 
@@ -65,9 +66,13 @@ class AerospikeClient:
 
     @require_connection
     async def put_key(
-        self, namespace: str, set_name: str, key: str, bin_name: str, value: str
+        self,
+        namespace: str,
+        set_name: str,
+        key: str,
+        bin_: Dict[str, AerospikeValueType],
     ) -> None:
-        message = put_key(namespace, set_name, key, bin_name, value)
+        message = put_key(namespace, set_name, key, bin_)
         data = AerospikeMessage(message).pack()
         self._writer.write(data)
         await self._writer.drain()

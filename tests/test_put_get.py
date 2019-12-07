@@ -2,41 +2,41 @@ import pytest
 
 
 @pytest.mark.asyncio
-async def test_sanity_put_get(client):
+async def test_sanity_put_get(namespace, set_name, key, client):
     await client.put_key(
-        "test", "test_set", "test_key", "test_bin_name", "test_value"
+        namespace, set_name, key, {"test_bin_name": "test_value"}
     )
 
-    result = await client.get_key("test", "test_set", "test_key")
+    result = await client.get_key(namespace, set_name, key)
     assert result["test_bin_name"] == "test_value"
 
 
 @pytest.mark.asyncio
-async def test_put_get_bytes_key(client):
+async def test_put_get_bytes_key(namespace, set_name, client):
     await client.put_key(
-        "test", "test_set", b"test_bytes_key", "test_bin_name", "test_value"
+        "test", set_name, b"test_bytes_key", {"test_bin_name": "test_value"}
     )
 
-    result = await client.get_key("test", "test_set", b"test_bytes_key")
+    result = await client.get_key("test", set_name, b"test_bytes_key")
     assert result["test_bin_name"] == "test_value"
 
 
 @pytest.mark.asyncio
-async def test_put_get_integer_key(client):
+async def test_put_get_integer_key(namespace, set_name, client):
 
-    await client.put_key("test", "test_set", 300, "test_bin_name", "test_value")
+    await client.put_key("test", set_name, 300, {"test_bin_name": "test_value"})
 
-    result = await client.get_key("test", "test_set", 300)
+    result = await client.get_key("test", set_name, 300)
     assert result["test_bin_name"] == "test_value"
 
 
 @pytest.mark.asyncio
-async def test_put_get_double_key(client):
+async def test_put_get_double_key(namespace, set_name, client):
     await client.put_key(
-        "test", "test_set", 123.123, "test_bin_name", "test_value"
+        "test", set_name, 123.123, {"test_bin_name": "test_value"}
     )
 
-    result = await client.get_key("test", "test_set", 123.123)
+    result = await client.get_key("test", set_name, 123.123)
     assert result["test_bin_name"] == "test_value"
 
 
@@ -50,9 +50,9 @@ async def test_put_get_double_key(client):
         ["a"] * 60000,
     ],
 )
-async def test_put_get_list(test_input, client):
-    await client.put_key("test", "test_set", "test_key", "test_bin", test_input)
-    result = await client.get_key("test", "test_set", "test_key")
+async def test_put_get_list(test_input, namespace, set_name, key, client):
+    await client.put_key(namespace, set_name, key, {"test_bin": test_input})
+    result = await client.get_key(namespace, set_name, key)
     assert result["test_bin"] == test_input
 
 
@@ -66,7 +66,7 @@ async def test_put_get_list(test_input, client):
         {"longkey" * 4000: ["l"] * 60000},
     ],
 )
-async def test_put_get_dict(test_input, client):
-    await client.put_key("test", "test_set", "test_key", "test_bin", test_input)
-    result = await client.get_key("test", "test_set", "test_key")
+async def test_put_get_dict(test_input, namespace, set_name, key, client):
+    await client.put_key(namespace, set_name, key, {"test_bin": test_input})
+    result = await client.get_key(namespace, set_name, key)
     assert result["test_bin"] == test_input
