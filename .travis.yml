@@ -13,3 +13,6 @@ script:
 - sleep 5
 - make test
 - make codecov
+branches:
+ only:
+ - master
