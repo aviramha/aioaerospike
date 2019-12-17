@@ -259,6 +259,7 @@ def put_key(
     set_name: str,
     key: AerospikeKeyType,
     bin_: Dict[str, AerospikeValueType],
+    ttl: int = 0,
 ) -> Message:
     fields = generate_namespace_set_key_fields(namespace, set_name, key)
 
@@ -274,6 +275,7 @@ def put_key(
         transaction_ttl=1000,
         fields=fields,
         operations=ops,
+        record_ttl=ttl,
     )
 
 

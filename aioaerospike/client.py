@@ -71,6 +71,7 @@ class AerospikeClient:
         set_name: str,
         key: str,
         bin_: Dict[str, AerospikeValueType],
+        ttl: int = 0,
     ) -> None:
         message = put_key(namespace, set_name, key, bin_)
         data = AerospikeMessage(message).pack()
