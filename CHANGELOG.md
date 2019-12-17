@@ -1,6 +1,8 @@
 # Changelog for aioaerospike
 
-## 0.1.5 (XXXX-XX-XX)
+## 0.1.6 (XXXX-XX-XX)
+
+## 0.1.5 (2019-12-17)
 - Added TTL argument for put_key
 - Added operate method, enables users to interact with lower-level API to do specific actions, such as multi op
   (read, write, modify, etc) in same message.

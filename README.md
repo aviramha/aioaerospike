@@ -38,7 +38,9 @@ $ make lint-black
 
 # Latest changes
 
-## 0.1.5 (XXXX-XX-XX)
+## 0.1.6 (XXXX-XX-XX)
+
+## 0.1.5 (2019-12-17)
 - Added TTL argument for put_key
 - Added operate method, enables users to interact with lower-level API to do specific actions, such as multi op
   (read, write, modify, etc) in same message.
@@ -59,10 +61,6 @@ $ make lint-black
 
 ## 0.1.1 (2019-12-07)
 - Fixed license and metadata
-
-## 0.1.0 (2019-12-07)
-
-- Initial release.
 
 
 ## This package is 3rd party, unrelated to Aerospike company
