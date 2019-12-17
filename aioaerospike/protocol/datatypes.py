@@ -36,6 +36,7 @@ PYTHON_TYPE_TO_AEROSPIKE = {
     int: AerospikeTypes.INTEGER,
     list: AerospikeTypes.TLIST,
     dict: AerospikeTypes.TMAP,
+    type(None): AerospikeTypes.UNDEF,
 }
 
 
@@ -45,7 +46,7 @@ class AerospikeMetaDataType(ABCMeta):
     def __new__(cls, *args: Any, **kwargs: Any):
         new_class = super().__new__(cls, *args, **kwargs)
         type_ = getattr(new_class, "TYPE", None)
-        if type_:
+        if type_ is not None:
             cls.types[type_] = new_class
         return new_class
 
@@ -161,6 +162,23 @@ class AerospikeBytes(AerospikeDataType):
 
     def __len__(self):
         return len(self.value)
+
+
+class AerospikeNone(AerospikeDataType):
+    TYPE = AerospikeTypes.UNDEF
+
+    def __init__(self, value: None):
+        pass
+
+    def pack(self) -> bytes:
+        return b""
+
+    @classmethod
+    def parse(cls, data: bytes) -> None:
+        return None
+
+    def __len__(self):
+        return 0
 
 
 class AerospikeList(AerospikeDataType):

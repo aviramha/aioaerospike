@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from enum import IntEnum, IntFlag, auto
 from functools import reduce
 from struct import Struct
-from typing import Any, Dict, List, Type
+from typing import Any, Dict, List, Optional, Type
 
 from .datatypes import (
     AerospikeDataType,
@@ -315,4 +315,30 @@ def key_exists(namespace: str, set_name: str, key: AerospikeKeyType) -> Message:
         transaction_ttl=1000,
         fields=fields,
         operations=[],
+    )
+
+
+def operate(
+    namespace: str,
+    set_name: str,
+    key: AerospikeKeyType,
+    info1: Info1Flags,
+    info2: Info2Flags,
+    info3: Info3Flags,
+    operations: List[Operation],
+    fields: Optional[List[Field]] = None,
+    ttl: int = 0,
+    generation: int = 0,
+):
+    fields = fields or []
+    fields += generate_namespace_set_key_fields(namespace, set_name, key)
+    return Message(
+        info1=info1,
+        info2=info2,
+        info3=info3,
+        transaction_ttl=1000,
+        fields=fields,
+        operations=operations,
+        generation=generation,
+        record_ttl=ttl,
     )

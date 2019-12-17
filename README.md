@@ -40,6 +40,9 @@ $ make lint-black
 
 ## 0.1.5 (XXXX-XX-XX)
 - Added TTL argument for put_key
+- Added operate method, enables users to interact with lower-level API to do specific actions, such as multi op
+  (read, write, modify, etc) in same message.
+- Added UNDEF/AerospikeNone for the option of empty bins, when reading specific bins.
 
 ## 0.1.4 (2019-12-07)
 - Added delete key method

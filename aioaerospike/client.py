@@ -2,9 +2,20 @@ from asyncio import StreamReader, StreamWriter, open_connection
 from functools import wraps
 from typing import Any, Dict, List, Optional
 
-from .protocol.datatypes import AerospikeValueType
+from .protocol.datatypes import AerospikeKeyType, AerospikeValueType
 from .protocol.general import AerospikeHeader, AerospikeMessage
-from .protocol.message import delete_key, get_key, key_exists, put_key
+from .protocol.message import (
+    Field,
+    Info1Flags,
+    Info2Flags,
+    Info3Flags,
+    Operation,
+    delete_key,
+    get_key,
+    key_exists,
+    operate,
+    put_key,
+)
 
 
 class AerospikeClientNotConnected(Exception):
@@ -121,3 +132,38 @@ class AerospikeClient:
                 f"Unexpected result code {response.message.result_code}"
             )
         return True
+
+    @require_connection
+    async def operate(
+        self,
+        namespace: str,
+        set_name: str,
+        key: AerospikeKeyType,
+        info1: Info1Flags,
+        info2: Info2Flags,
+        info3: Info3Flags,
+        operations: List[Operation],
+        fields: Optional[List[Field]] = None,
+        ttl: int = 0,
+        generation: int = 0,
+    ) -> AerospikeMessage:
+        """
+        Execute the given operations, letting user define their own custom complex operations.
+        Fields will be appended to the default fields of namespace, set, key.
+        """
+        message = operate(
+            namespace,
+            set_name,
+            key,
+            info1,
+            info2,
+            info3,
+            operations,
+            fields,
+            ttl,
+            generation,
+        )
+        data = AerospikeMessage(message).pack()
+        self._writer.write(data)
+        await self._writer.drain()
+        return await self._get_response()
